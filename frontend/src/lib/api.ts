@@ -109,6 +109,16 @@ export const api = {
     return res.json();
   },
 
+  approveReel: async (
+    sessionId: string
+  ): Promise<{ status: string }> => {
+    const res = await fetch(`${API_BASE}/api/session/${sessionId}/approve_reel`, {
+      method: "POST",
+    });
+    if (!res.ok) throw new Error("Failed to approve reel");
+    return res.json();
+  },
+
   // Polling endpoints
   getSession: async (
     sessionId: string
@@ -126,7 +136,7 @@ export const api = {
 
   getStore: async (
     sessionId: string
-  ): Promise<{ reel_url: string | null; reel_status: string; assets: Asset[] }> => {
+  ): Promise<{ product_name: string; reel_url: string | null; reel_status: string; assets: Asset[] }> => {
     const res = await fetch(`${API_BASE}/api/store/${sessionId}`);
     if (!res.ok) throw new Error("Failed to fetch store");
     return res.json();

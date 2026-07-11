@@ -8,6 +8,7 @@ export default function StorePage() {
   const { sessionId } = useParams();
   const [reelUrl, setReelUrl] = useState<string | null>(null);
   const [reelStatus, setReelStatus] = useState<string>("pending");
+  const [productName, setProductName] = useState<string>("");
   const [assets, setAssets] = useState<Asset[]>([]);
 
   // Use React hook polling pattern
@@ -22,6 +23,7 @@ export default function StorePage() {
         if (isMounted) {
           setReelUrl(data.reel_url);
           setReelStatus(data.reel_status);
+          setProductName(data.product_name);
           // Only show approved assets in the storefront
           setAssets(data.assets);
         }
@@ -44,7 +46,14 @@ export default function StorePage() {
       {/* Top Nav */}
       <header className="px-8 py-6 border-b border-line flex justify-between items-center bg-ink2">
         <div className="font-display font-bold text-2xl tracking-wide uppercase">
-          Lakshmi<span className="text-marigold">Sarees</span>
+          {productName ? (
+            <>
+              {productName.split(" ")[0]}
+              <span className="text-marigold">{productName.split(" ").slice(1).join(" ")}</span>
+            </>
+          ) : (
+            <>Photo<span className="text-marigold">Dukaan</span></>
+          )}
         </div>
         <div className="flex gap-6 text-sm font-semibold tracking-wide">
           <a href="#" className="hover:text-marigold transition">Shop</a>
@@ -100,14 +109,14 @@ export default function StorePage() {
 
         {/* Right Column: Product Details */}
         <div className="flex flex-col pt-8">
-          <div className="mb-2 text-lilac font-bold tracking-widest text-xs uppercase">Dharmavaram Handloom</div>
-          <h1 className="font-display font-extrabold text-4xl leading-tight mb-4">
-            Mustard Yellow & Rani Pink Silk Saree
+          <div className="mb-2 text-lilac font-bold tracking-widest text-xs uppercase">PhotoDukaan Studio</div>
+          <h1 className="font-display font-extrabold text-4xl leading-tight mb-4 capitalize">
+            {productName || "Product"}
           </h1>
-          <div className="text-2xl text-marigold font-bold mb-8">₹12,499</div>
+          <div className="text-2xl text-marigold font-bold mb-8">₹{Math.floor(Math.random() * 5000) + 999}</div>
           
           <p className="text-lg text-lilac leading-relaxed mb-10">
-            Handwoven by master artisans, this vibrant Dharmavaram silk saree features a rich mustard yellow body contrasted by a deep rani pink border with intricate gold zari brocade work.
+            Discover the beauty of this newly approved {productName?.toLowerCase() || "item"}. Shot and directed professionally using the PhotoDukaan Studio.
           </p>
 
           <button className="w-full py-5 bg-ivory text-ink font-bold text-lg rounded-xl hover:bg-marigold transition shadow-xl mb-12 uppercase tracking-wide">

@@ -98,7 +98,7 @@ export default function StudioPage() {
     try {
       const res = await api.updateAssetStatus(assetId, "approved");
       if (res.reanimate_hint) {
-        pushMsg({ role: "studio", text: "Love this shot! Make it the reel?", reanimateAssetId: assetId });
+        pushMsg({ role: "studio", text: "Love this shot! Animate it with Omni Flash?", reanimateAssetId: assetId });
       }
     } catch (err) {
       console.error(err);
@@ -119,6 +119,16 @@ export default function StudioPage() {
     if (!sessionId) return;
     try {
       await api.animate(sessionId, assetId);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleApproveReel = async () => {
+    if (!sessionId) return;
+    setSession((prev) => prev ? { ...prev, reel_status: "approved" } : null);
+    try {
+      await api.approveReel(sessionId);
     } catch (err) {
       console.error(err);
     }
@@ -182,9 +192,9 @@ export default function StudioPage() {
           {m.reanimateAssetId && (
             <button
               onClick={() => handleReanimate(m.reanimateAssetId!, m.id)}
-              className="mt-2 bg-marigold text-ink text-xs font-bold px-3 py-1.5 rounded-full active:scale-95 transition"
+              className="mt-2 bg-[#7A5CD6] text-ivory text-xs font-bold px-3 py-1.5 rounded-full active:scale-95 transition"
             >
-              🎬 Re-animate from this shot
+              🎬 Animate this shot
             </button>
           )}
         </div>
@@ -400,18 +410,34 @@ export default function StudioPage() {
                           ? "⏳ Rendering…"
                           : session.reel_status === "failed"
                           ? "Retry soon"
+                          : session.reel_status === "approved"
+                          ? "✓ Published"
                           : "✓ Ready"}
                       </span>
                     </div>
-                    {session.reel_status === "ready" && session.reel_url ? (
-                      <video
-                        src={session.reel_url}
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
-                        className="w-full aspect-[4/5] rounded-lg object-cover bg-black"
-                      />
+                    {(session.reel_status === "ready" || session.reel_status === "approved") && session.reel_url ? (
+                      <div className="flex flex-col gap-3">
+                        <video
+                          src={session.reel_url}
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                          className="w-full aspect-[4/5] rounded-lg object-cover bg-black"
+                        />
+                        {session.reel_status === "ready" ? (
+                          <button
+                            onClick={handleApproveReel}
+                            className="w-full bg-[#7A5CD6] text-ivory text-xs font-bold py-2.5 rounded-lg active:scale-95 transition shadow-md"
+                          >
+                            Approve Video to Publish
+                          </button>
+                        ) : (
+                          <div className="w-full text-center py-2.5 text-xs font-bold text-teal bg-ink rounded-lg border border-teal/30">
+                            ✓ Published to Storefront
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <div className="w-full aspect-[4/5] bg-ink rounded-lg animate-shimmer flex items-center justify-center">
                         <span className="text-lilac text-xs">
