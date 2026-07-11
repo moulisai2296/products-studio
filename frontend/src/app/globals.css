@@ -1,0 +1,76 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #201A3A;
+  --ink2: #2B2450;
+  --line: #3a3168;
+  --marigold: #F5A83C;
+  --rani: #D64570;
+  --ivory: #F8F4EA;
+  --lilac: #A79FC7;
+  --teal: #4FC3B0;
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-ink2: var(--ink2);
+  --color-line: var(--line);
+  --color-marigold: var(--marigold);
+  --color-rani: var(--rani);
+  --color-ivory: var(--ivory);
+  --color-lilac: var(--lilac);
+  --color-teal: var(--teal);
+  
+  --font-sans: var(--font-sora);
+  --font-display: var(--font-bricolage);
+}
+
+body {
+  background-color: var(--ink);
+  color: var(--ivory);
+  font-family: var(--font-sans), sans-serif;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* Animations from Phase 0 design specs */
+@keyframes shimmer {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+
+.animate-shimmer {
+  animation: shimmer 1.5s infinite ease-in-out;
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-enter {
+  animation: enter 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Custom Scrollbar for desktop */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--ink);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--ink2);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--line);
+}
