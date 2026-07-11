@@ -14,6 +14,12 @@ type ChatMsg = {
 
 const uid = () => Math.random().toString(36).slice(2);
 
+let lastTs = Date.now();
+const getTs = () => {
+  lastTs = Math.max(Date.now(), lastTs + 1);
+  return lastTs;
+};
+
 export default function StudioPage() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -22,6 +28,7 @@ export default function StudioPage() {
   const [instruction, setInstruction] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -47,7 +54,7 @@ export default function StudioPage() {
   }, [assets.length, messages.length, session?.reel_status, isGenerating]);
 
   const pushMsg = (m: Omit<ChatMsg, "id" | "ts"> & Partial<Pick<ChatMsg, "id" | "ts">>) => {
-    const msg: ChatMsg = { id: m.id ?? uid(), ts: m.ts ?? Date.now(), ...m } as ChatMsg;
+    const msg: ChatMsg = { id: m.id ?? uid(), ts: m.ts ?? getTs(), ...m } as ChatMsg;
     setMessages((prev) => [...prev, msg]);
     return msg.id;
   };
@@ -74,7 +81,8 @@ export default function StudioPage() {
   };
 
   const runEdit = async (text: string) => {
-    if (!sessionId || !text.trim()) return;
+    if (!sessionId || !text.trim() || isEditing) return;
+    setIsEditing(true);
     pushMsg({ role: "seller", text });
     const pendingId = pushMsg({ role: "studio", pending: true });
     try {
@@ -89,6 +97,8 @@ export default function StudioPage() {
       console.error(err);
       removeMsg(pendingId);
       pushMsg({ role: "studio", text: "Studio hiccup — try that again?" });
+    } finally {
+      setIsEditing(false);
     }
   };
 
@@ -463,7 +473,7 @@ export default function StudioPage() {
               <button
                 key={c.label}
                 onClick={() => runEdit(c.text)}
-                disabled={!sessionId}
+                disabled={!sessionId || isEditing}
                 className="snap-start shrink-0 bg-ink border border-line text-[10px] text-ivory px-3 py-1 rounded-full hover:border-marigold transition whitespace-nowrap disabled:opacity-40"
               >
                 {c.emoji} {c.label}
@@ -477,17 +487,19 @@ export default function StudioPage() {
               value={instruction}
               onChange={(e) => setInstruction(e.target.value)}
               placeholder="Tell the studio what you want…"
-              className="flex-1 bg-ink border border-line rounded-full px-4 py-1 text-sm text-ivory focus:outline-none focus:border-marigold placeholder-lilac"
+              className="flex-1 bg-ink border border-line rounded-full px-4 py-1 text-sm text-ivory focus:outline-none focus:border-marigold placeholder-lilac disabled:opacity-50"
+              disabled={isEditing}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && instruction.trim()) {
+                if (e.key === "Enter" && instruction.trim() && !isEditing) {
                   runEdit(instruction);
                   setInstruction("");
                 }
               }}
             />
             <button
+              disabled={isEditing}
               onClick={() => {
-                if (instruction.trim()) {
+                if (instruction.trim() && !isEditing) {
                   runEdit(instruction);
                   setInstruction("");
                 }
