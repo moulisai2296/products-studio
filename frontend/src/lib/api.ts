@@ -11,6 +11,7 @@ export interface Asset {
   latency_ms: number;
   cost_usd: number;
   drive_file_id?: string | null;
+  drive_url?: string | null;
   drive_status: "pending" | "synced" | "skipped" | "failed" | "syncing";
   prompt?: string;
   created_at: string;
@@ -66,7 +67,7 @@ export const api = {
     sessionId: string,
     instruction: string,
     baseAssetId?: string
-  ): Promise<{ asset: Asset }> => {
+  ): Promise<{ asset: Asset | null; message: string | null }> => {
     const res = await fetch(`${API_BASE}/api/edit`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -84,7 +85,7 @@ export const api = {
   updateAssetStatus: async (
     assetId: string,
     status: "approved" | "rejected"
-  ): Promise<Asset> => {
+  ): Promise<Asset & { reanimate_hint?: boolean }> => {
     const res = await fetch(`${API_BASE}/api/assets/${assetId}/status`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -119,7 +120,7 @@ export const api = {
 
   getStore: async (
     sessionId: string
-  ): Promise<{ reel_url: string | null; assets: Asset[] }> => {
+  ): Promise<{ reel_url: string | null; reel_status: string; assets: Asset[] }> => {
     const res = await fetch(`${API_BASE}/api/store/${sessionId}`);
     if (!res.ok) throw new Error("Failed to fetch store");
     return res.json();

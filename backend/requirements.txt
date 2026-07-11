@@ -1,8 +1,13 @@
 fastapi
-uvicorn
+uvicorn[standard]
+gunicorn
 pydantic
 python-multipart
+python-dotenv
 google-genai
+google-api-python-client
+google-auth
 supabase
 langfuse
-python-dotenv
+# Only needed by setup_db.py (create tables). Harmless at runtime.
+psycopg2-binary

@@ -124,3 +124,12 @@ dist
 # OS metadata
 .DS_Store
 Thumbs.db
+
+# --- Backend (Python) ---
+backend/.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+# Runtime-generated assets (keep seed/ which the demo fallback needs)
+backend/static/assets/
+!backend/static/seed/
