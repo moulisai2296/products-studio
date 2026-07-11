@@ -40,6 +40,41 @@ The app runs fine even if Supabase is down — it falls back to an in-memory sto
 > `static/assets/` are also mirrored to Supabase (metadata) and Google Drive
 > (files), so a restart loses only local copies, not the campaign record.
 
+## 2b. Backend on Google Cloud Run (faster alternative to Render)
+
+Cloud Run runs inside Google Cloud (shorter hop to the Gemini API) and can stay
+warm (no cold-start 503 wall). `Dockerfile` is ready.
+
+**Must pin to a single instance/worker** — the app holds session state in memory
+and serves generated images from local disk, so multiple instances would desync.
+
+```bash
+cd backend
+cp cloudrun.env.yaml.example cloudrun.env.yaml   # fill in secrets (gitignored)
+
+# First deploy (builds the Dockerfile via Cloud Build):
+gcloud run deploy photodukaan-api \
+  --source . \
+  --region asia-south1 \          # Mumbai — close to India for the demo
+  --allow-unauthenticated \
+  --min-instances 1 --max-instances 1 \
+  --cpu 2 --memory 1Gi --timeout 300 \
+  --env-vars-file cloudrun.env.yaml
+
+# It prints a Service URL like https://photodukaan-api-XXXX.a.run.app
+# Put that URL into PUBLIC_BASE_URL in cloudrun.env.yaml, then update:
+gcloud run services update photodukaan-api --region asia-south1 \
+  --update-env-vars PUBLIC_BASE_URL=https://photodukaan-api-XXXX.a.run.app
+```
+
+Then point the frontend at it: set Vercel `NEXT_PUBLIC_API_BASE` to the Cloud Run
+URL and redeploy. `min-instances 1` keeps one instance warm (small always-on
+cost, but no cold starts). What Cloud Run does *not* change: the ~4-5s per-image
+model inference floor — that's Google's side.
+
+> Uses the project from your gcloud config (`gcloud config set project <id>`).
+> The service-account JSON already references project `long-temple-502107-f9`.
+
 ## 3. Frontend on Vercel
 - New Project → import repo → **Root Directory: `frontend`** (framework auto-detected).
 - Env var: `NEXT_PUBLIC_API_BASE = https://<your-render-service>.onrender.com`

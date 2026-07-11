@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+tests/
+# Runtime-generated assets (seed/ IS kept — needed for fallback)
+static/assets/
+# Secrets are supplied via Cloud Run env vars, never baked into the image
+.env
+.env.*
