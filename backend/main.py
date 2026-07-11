@@ -317,17 +317,17 @@ async def get_global_store():
     # Group by session (which represents a product upload)
     for session_id, session in sessions_db.items():
         approved = [a for a in assets_db.values()
-                    if a["session_id"] == session_id and a["status"] == "approved"]
+                    if a.get("session_id") == session_id and a.get("status") == "approved"]
         
         if len(approved) > 0:
             store_items.append({
                 "session_id": session_id,
-                "product_name": session.get("product_name", "Product"),
-                "product_folder": session.get("product_folder", "Product"),
-                "reel_url": session["reel_url"] if session.get("reel_status") == "ready" else None,
-                "reel_status": session.get("reel_status", "pending"),
+                "product_name": session.get("product_name") or "Product",
+                "product_folder": session.get("product_folder") or "Product",
+                "reel_url": session.get("reel_url") if session.get("reel_status") == "ready" else None,
+                "reel_status": session.get("reel_status") or "pending",
                 "assets": approved,
-                "created_at": session.get("created_at", "")
+                "created_at": session.get("created_at") or ""
             })
             
     # Sort newest first
