@@ -21,9 +21,9 @@ services:
       - key: LANGFUSE_HOST
         value: https://cloud.langfuse.com
       - key: ALLOWED_ORIGINS
-        sync: false      # set to your Vercel URL, e.g. https://photodukaan.vercel.app
+        value: "*"       # or lock to your Vercel URL, e.g. https://products-studio.vercel.app
       - key: PUBLIC_BASE_URL
-        sync: false      # set to this service's URL, e.g. https://photodukaan-api.onrender.com
+        value: https://photodukaan-api.onrender.com   # MUST match this service's URL, else asset URLs point at localhost
       - key: GEMINI_API_KEY
         sync: false
       - key: SUPABASE_URL
