@@ -26,14 +26,24 @@ app = FastAPI(title="PhotoDukaan API")
 
 # CORS: comma-separated ALLOWED_ORIGINS, or "*" for hackathon. Credentials off
 # because the frontend never sends cookies (and "*" + credentials is invalid).
-_origins = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "*").split(",") if o.strip()]
+# Harden against footguns: an empty value falls back to "*" (an empty allow-list
+# would silently block ALL cross-origin requests), and trailing slashes are
+# stripped so "https://app.vercel.app/" still matches the Origin header (which
+# never has a trailing slash).
+_raw_origins = os.getenv("ALLOWED_ORIGINS", "*").strip()
+_origins = [o.strip().rstrip("/") for o in _raw_origins.split(",") if o.strip()]
+if not _origins or "*" in _origins:
+    _origins = ["*"]
+_origin_regex = os.getenv("ALLOWED_ORIGIN_REGEX") or None  # e.g. Vercel preview URLs
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_origins,
+    allow_origin_regex=_origin_regex,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+print(f"[main] CORS allow_origins={_origins} regex={_origin_regex}")
 
 os.makedirs(config.STATIC_DIR, exist_ok=True)
 app.mount("/static", StaticFiles(directory=config.STATIC_DIR), name="static")
