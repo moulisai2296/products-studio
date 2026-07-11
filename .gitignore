@@ -133,3 +133,6 @@ __pycache__/
 # Runtime-generated assets (keep seed/ which the demo fallback needs)
 backend/static/assets/
 !backend/static/seed/
+
+# Cloud Run env file with real secrets
+backend/cloudrun.env.yaml
