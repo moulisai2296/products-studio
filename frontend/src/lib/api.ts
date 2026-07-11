@@ -23,7 +23,7 @@ export interface Session {
   product_name?: string;
   product_folder?: string;
   chain_interaction_id?: string | null;
-  reel_status: "pending" | "rendering" | "ready" | "failed";
+  reel_status: "pending" | "rendering" | "ready" | "approved" | "failed";
   reel_url?: string | null;
   reel_seed_asset_id?: string | null;
   created_at: string;
