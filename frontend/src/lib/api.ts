@@ -125,12 +125,4 @@ export const api = {
     if (!res.ok) throw new Error("Failed to fetch store");
     return res.json();
   },
-
-  getAdmin: async (
-    sessionId: string
-  ): Promise<{ session: Session; assets: Asset[]; total_cost: number }> => {
-    const res = await fetch(`${API_BASE}/api/admin/${sessionId}`);
-    if (!res.ok) throw new Error("Failed to fetch admin data");
-    return res.json();
-  },
 };
