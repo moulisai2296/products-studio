@@ -274,13 +274,8 @@ async def update_asset_status(asset_id: str, req: StatusUpdate, background_tasks
         # Drive sync ONLY on approval
         background_tasks.add_task(sync_asset_background, session_id, asset_id, True)
 
-        # First approved asset automatically becomes the reel seed and triggers generation
-        if session.get("reel_seed_asset_id") is None and asset.get("kind") in ("angle", "edit"):
-            session["reel_seed_asset_id"] = asset_id
-            background_tasks.add_task(process_reel_background, session_id)
-            background_tasks.add_task(mirror_session, session_id)
-        elif asset.get("kind") in ("angle", "edit") and asset_id != session.get("reel_seed_asset_id"):
-            # Offer "Re-animate from this shot?" when subsequent assets are approved
+        # Offer "Animate this shot?" when any asset is approved, instead of automatically triggering
+        if asset.get("kind") in ("angle", "edit"):
             reanimate_hint = True
 
     background_tasks.add_task(mirror_asset, asset_id)
@@ -300,6 +295,20 @@ async def request_animation(req: AnimateRequest, background_tasks: BackgroundTas
     return {"status": "rendering started"}
 
 
+@app.post("/api/session/{session_id}/approve_reel")
+async def approve_reel(session_id: str, background_tasks: BackgroundTasks):
+    """Approve the generated reel so it shows up in the store."""
+    if session_id not in sessions_db:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    session = sessions_db[session_id]
+    if session.get("reel_status") == "ready":
+        session["reel_status"] = "approved"
+        background_tasks.add_task(mirror_session, session_id)
+        
+    return {"status": session["reel_status"]}
+
+
 @app.get("/api/session/{session_id}")
 async def get_session(session_id: str):
     """Full session state (chat screen polls this). Base64 stripped."""
@@ -317,17 +326,17 @@ async def get_global_store():
     # Group by session (which represents a product upload)
     for session_id, session in sessions_db.items():
         approved = [a for a in assets_db.values()
-                    if a["session_id"] == session_id and a["status"] == "approved"]
+                    if a.get("session_id") == session_id and a.get("status") == "approved"]
         
         if len(approved) > 0:
             store_items.append({
                 "session_id": session_id,
-                "product_name": session.get("product_name", "Product"),
-                "product_folder": session.get("product_folder", "Product"),
-                "reel_url": session["reel_url"] if session.get("reel_status") == "ready" else None,
-                "reel_status": session.get("reel_status", "pending"),
+                "product_name": session.get("product_name") or "Product",
+                "product_folder": session.get("product_folder") or "Product",
+                "reel_url": session.get("reel_url") if session.get("reel_status") == "approved" else None,
+                "reel_status": session.get("reel_status") or "pending",
                 "assets": approved,
-                "created_at": session.get("created_at", "")
+                "created_at": session.get("created_at") or ""
             })
             
     # Sort newest first
@@ -344,7 +353,8 @@ async def get_store(session_id: str):
     approved = [a for a in assets_db.values()
                 if a["session_id"] == session_id and a["status"] == "approved"]
     return {
-        "reel_url": session.get("reel_url") if session.get("reel_status") == "ready" else None,
+        "product_name": session.get("product_name") or "Product",
+        "reel_url": session.get("reel_url") if session.get("reel_status") == "approved" else None,
         "reel_status": session.get("reel_status"),
         "assets": approved,
     }
