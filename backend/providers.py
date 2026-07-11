@@ -162,28 +162,35 @@ def _generate_single_angle_sync(session: dict, spec: dict) -> dict:
     }
 
 
+async def _one_angle(session: dict, spec: dict) -> dict:
+    """Generate a single angle; degrade to its seed image on any failure."""
+    try:
+        with obs.generation("angle:" + spec["label"], model=config.MODEL_ANGLE,
+                            session_id=session["id"]) as span:
+            angle = await _with_timeout(
+                _generate_single_angle_sync, session, spec,
+                timeout=config.TIMEOUT_IMAGE, label="angle",
+            )
+            span.set_result(cost_usd=config.COST_ANGLE, output=angle["url"],
+                            latency_ms=angle["latency_ms"])
+        return angle
+    except Exception as e:
+        print(f"[providers] angle '{spec['label']}' failed, using seed: {e}")
+        return _seed_angle(spec)
+
+
 async def generate_angles(session: dict):
-    """Always returns 4 angles. Any failing angle degrades to its seed image."""
+    """Always returns 4 angles. Any failing angle degrades to its seed image.
+
+    Fires all angles CONCURRENTLY — NB2 Lite is ~4-5s/image, so the whole batch
+    finishes in ~one image's time instead of the sum. gather preserves order and
+    each task self-degrades, so one failure never sinks the batch.
+    """
     if config.MOCK_MODE or config.DEMO_FALLBACK:
         await asyncio.sleep(LATENCY_LITE if config.MOCK_MODE else 0.2)
         return [_seed_angle(s) for s in ANGLE_SPECS]
 
-    angles = []
-    for spec in ANGLE_SPECS:
-        try:
-            with obs.generation("angle:" + spec["label"], model=config.MODEL_ANGLE,
-                                session_id=session["id"]) as span:
-                angle = await _with_timeout(
-                    _generate_single_angle_sync, session, spec,
-                    timeout=config.TIMEOUT_IMAGE, label="angle",
-                )
-                span.set_result(cost_usd=config.COST_ANGLE, output=angle["url"],
-                                latency_ms=angle["latency_ms"])
-            angles.append(angle)
-        except Exception as e:
-            print(f"[providers] angle '{spec['label']}' failed, using seed: {e}")
-            angles.append(_seed_angle(spec))
-    return angles
+    return list(await asyncio.gather(*[_one_angle(session, s) for s in ANGLE_SPECS]))
 
 
 # ==========================================================================
