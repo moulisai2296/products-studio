@@ -130,9 +130,27 @@ export default function StudioPage() {
     for (const m of messages) {
       items.push({ ts: m.ts, key: `m-${m.id}`, render: renderMessage(m) });
     }
-    for (const a of assets) {
+    
+    // Group angles into a single grid
+    const angles = assets.filter((a) => a.kind === "angle");
+    if (angles.length > 0) {
+      items.push({
+        ts: Date.parse(angles[0].created_at) || 0,
+        key: "angles-grid",
+        render: (
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            {angles.map((asset) => renderGridAsset(asset))}
+          </div>
+        ),
+      });
+    }
+
+    // Render edits individually
+    const edits = assets.filter((a) => a.kind === "edit");
+    for (const a of edits) {
       items.push({ ts: Date.parse(a.created_at) || 0, key: `a-${a.id}`, render: renderAsset(a) });
     }
+    
     items.sort((x, y) => x.ts - y.ts);
     return items;
   }, [messages, assets]);
@@ -230,6 +248,51 @@ export default function StudioPage() {
     );
   }
 
+  function renderGridAsset(asset: Asset) {
+    const isLite = asset.model.includes("lite");
+    return (
+      <div key={asset.id} className="bg-ink2 rounded-xl p-2 border border-line flex flex-col shadow-lg animate-enter">
+        <div className="flex justify-between items-center mb-1.5">
+          <span className="text-[10px] font-bold text-ivory truncate pr-1">{asset.label}</span>
+          <span className="text-[8px] text-lilac bg-ink px-1 rounded border border-line shrink-0">
+            {(asset.latency_ms / 1000).toFixed(1)}s
+          </span>
+        </div>
+        <img
+          src={asset.url}
+          alt={asset.label}
+          className="w-full rounded-lg aspect-[4/5] object-cover mb-2"
+        />
+        <div className="flex gap-1 mt-auto">
+          {asset.status === "approved" ? (
+            <div className="flex-1 text-center py-1.5 text-[10px] font-bold text-teal bg-ink rounded-md border border-teal/30">
+              ✓ Appr
+            </div>
+          ) : asset.status === "rejected" ? (
+            <div className="flex-1 text-center py-1.5 text-[10px] font-bold text-rani bg-ink rounded-md border border-rani/30">
+              ✕ Rej
+            </div>
+          ) : (
+            <>
+              <button
+                onClick={() => handleApprove(asset.id)}
+                className="flex-1 bg-marigold text-ink text-[10px] font-bold py-1.5 rounded-md active:scale-95 transition"
+              >
+                Approve
+              </button>
+              <button
+                onClick={() => handleReject(asset.id)}
+                className="flex-1 bg-ink text-ivory text-[10px] font-bold py-1.5 rounded-md border border-line active:scale-95 transition"
+              >
+                Reject
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   const chips: { emoji: string; label: string; text: string }[] = [
     { emoji: "🪔", label: "Telugu offer", text: "Add 'దీపావళి ఆఫర్ 20%' text" },
     { emoji: "🎁", label: "Hindi offer", text: "Add 'दिवाली ऑफर 20%' text" },
@@ -321,9 +384,14 @@ export default function StudioPage() {
                 </div>
               )}
 
-              {/* Reel card */}
-              {session?.reel_status && session.reel_status !== "pending" && (
-                <div className="flex justify-start animate-enter">
+              {/* Time-ordered timeline: seller bubbles, studio messages, asset cards */}
+              {timeline.map((item) => (
+                <div key={item.key}>{item.render}</div>
+              ))}
+
+              {/* Reel card (shown at the bottom once triggered by an approval) */}
+              {session?.reel_seed_asset_id && (
+                <div className="flex justify-start animate-enter mt-4">
                   <div className="bg-ink2 rounded-2xl p-3 border border-line w-full">
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-xs font-bold text-[#7A5CD6]">Omni Flash Reel</span>
@@ -356,11 +424,6 @@ export default function StudioPage() {
                   </div>
                 </div>
               )}
-
-              {/* Time-ordered timeline: seller bubbles, studio messages, asset cards */}
-              {timeline.map((item) => (
-                <div key={item.key}>{item.render}</div>
-              ))}
             </>
           )}
           <div ref={messagesEndRef} />

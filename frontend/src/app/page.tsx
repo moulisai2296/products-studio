@@ -32,13 +32,16 @@ export default function Home() {
             </span>
           </Link>
 
-          <div className="bg-ink2 border border-line rounded-2xl p-6 flex flex-col items-start text-left opacity-90">
+          <Link
+            href="/store"
+            className="group bg-ink2 border border-line rounded-2xl p-6 flex flex-col items-start text-left active:scale-95 transition hover:border-marigold/50 opacity-90 hover:opacity-100"
+          >
             <span className="text-2xl mb-3">🛍️</span>
-            <span className="font-display font-bold text-lg text-ivory">Storefront</span>
+            <span className="font-display font-bold text-lg text-ivory">Global Storefront</span>
             <span className="text-xs text-lilac">
-              Opens per session at <code className="text-marigold">/store/&lt;id&gt;</code> — approved shots only
+              View all approved assets across your entire catalog.
             </span>
-          </div>
+          </Link>
         </div>
 
         <p className="text-xs text-lilac">

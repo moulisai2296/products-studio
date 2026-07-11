@@ -71,6 +71,24 @@ async def _with_timeout(fn, *args, timeout: float, label: str):
 def _seed(name: str) -> str:
     return f"{config.SEED_URL}/{name}"
 
+import shutil
+def _copy_seed_to_draft(session: dict, seed_name: str) -> str:
+    """Copies a seed image to the session's draft folder so mock mode matches real behavior."""
+    draft_dir = os.path.join(config.STATIC_DIR, "assets", session["id"], "draft",
+                             session.get("product_folder", "Product"))
+    os.makedirs(draft_dir, exist_ok=True)
+    filename = f"{session['id']}_mock_{uuid.uuid4().hex[:8]}.png"
+    file_path = os.path.join(draft_dir, filename)
+    src_path = os.path.join(config.STATIC_DIR, "seed", seed_name)
+    try:
+        if os.path.exists(src_path):
+            shutil.copy2(src_path, file_path)
+            url_tail = os.path.relpath(file_path, config.STATIC_DIR).replace("\\", "/")
+            return f"{config.PUBLIC_BASE_URL}/static/{url_tail}"
+    except Exception as e:
+        print(f"[providers] mock copy failed: {e}")
+    return _seed(seed_name)
+
 
 # ==========================================================================
 # Product identification (3.5 Flash)
@@ -120,9 +138,10 @@ ANGLE_SPECS = [
 ]
 
 
-def _seed_angle(spec: dict) -> dict:
+def _seed_angle(session: dict, spec: dict) -> dict:
+    url = _copy_seed_to_draft(session, spec["seed"])
     return {
-        "kind": "angle", "label": spec["label"], "url": _seed(spec["seed"]),
+        "kind": "angle", "label": spec["label"], "url": url,
         "model": config.MODEL_ANGLE, "latency_ms": int(LATENCY_LITE * 1000),
         "cost_usd": config.COST_ANGLE, "prompt": spec["label"],
     }
@@ -176,8 +195,7 @@ async def _one_angle(session: dict, spec: dict) -> dict:
         return angle
     except Exception as e:
         print(f"[providers] angle '{spec['label']}' failed, using seed: {e}")
-        return _seed_angle(spec)
-
+        return _seed_angle(session, spec)
 
 async def generate_angles(session: dict):
     """Always returns 4 angles. Any failing angle degrades to its seed image.
@@ -188,7 +206,7 @@ async def generate_angles(session: dict):
     """
     if config.MOCK_MODE or config.DEMO_FALLBACK:
         await asyncio.sleep(LATENCY_LITE if config.MOCK_MODE else 0.2)
-        return [_seed_angle(s) for s in ANGLE_SPECS]
+        return [_seed_angle(session, s) for s in ANGLE_SPECS]
 
     return list(await asyncio.gather(*[_one_angle(session, s) for s in ANGLE_SPECS]))
 
@@ -272,11 +290,12 @@ def _edit_image_sync(session: dict, instruction: str) -> dict:
     }
 
 
-def _seed_edit(instruction: str) -> dict:
+def _seed_edit(session: dict, instruction: str) -> dict:
     label = _label_for(instruction)
     seed_file = "edit_festive_text.png" if label == "Festive Offer" else "edit_model_wedding.png"
+    url = _copy_seed_to_draft(session, seed_file)
     return {
-        "ok": True, "kind": "edit", "label": label, "url": _seed(seed_file),
+        "ok": True, "kind": "edit", "label": label, "url": url,
         "model": config.MODEL_EDIT, "latency_ms": int((LATENCY_DIRECTOR + LATENCY_NB2) * 1000),
         "cost_usd": config.COST_EDIT, "prompt": f"[Optimized] {instruction}",
         "chain_interaction_id": "seed_chain",
@@ -287,7 +306,7 @@ async def edit_image(session: dict, instruction: str, base_asset_id: str = None)
     """Returns an edit asset dict, or {'ok': False, 'message': ...} on failure."""
     if config.MOCK_MODE or config.DEMO_FALLBACK:
         await asyncio.sleep((LATENCY_DIRECTOR + LATENCY_NB2) if config.MOCK_MODE else 0.2)
-        return _seed_edit(instruction)
+        return _seed_edit(session, instruction)
 
     if not gemini_client:
         return {"ok": False, "message": STUDIO_HICCUP}

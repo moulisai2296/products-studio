@@ -118,6 +118,12 @@ export const api = {
     return res.json();
   },
 
+  getAllStore: async (): Promise<{ items: { session_id: string, product_name: string, product_folder: string, reel_url: string | null, reel_status: string, assets: Asset[], created_at: string }[] }> => {
+    const res = await fetch(`${API_BASE}/api/store`);
+    if (!res.ok) throw new Error("Failed to fetch global store");
+    return res.json();
+  },
+
   getStore: async (
     sessionId: string
   ): Promise<{ reel_url: string | null; reel_status: string; assets: Asset[] }> => {

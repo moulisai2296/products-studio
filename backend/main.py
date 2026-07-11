@@ -212,13 +212,7 @@ async def generate_angles(background_tasks: BackgroundTasks, session_id: str = F
         assets_db[asset_id] = asset
         created.append(asset)
         background_tasks.add_task(mirror_asset, asset_id)
-        background_tasks.add_task(sync_asset_background, session_id, asset_id, False)
-
-    # Seed the reel from the first angle (guarded against an empty batch).
-    if created:
-        sessions_db[session_id]["reel_seed_asset_id"] = created[0]["id"]
-        background_tasks.add_task(process_reel_background, session_id)
-        background_tasks.add_task(mirror_session, session_id)
+        # Drive sync is now deferred until approval
 
     return {"assets": created}
 
@@ -247,7 +241,7 @@ async def edit_image(req: EditRequest, background_tasks: BackgroundTasks):
     }
     assets_db[asset_id] = asset
     background_tasks.add_task(mirror_asset, asset_id)
-    background_tasks.add_task(sync_asset_background, req.session_id, asset_id, False)
+    # Drive sync is now deferred until approval
 
     return {"asset": asset, "message": None}
 
@@ -277,10 +271,16 @@ async def update_asset_status(asset_id: str, req: StatusUpdate, background_tasks
         except Exception as e:
             print(f"[main] approved copy failed: {e}")
 
+        # Drive sync ONLY on approval
         background_tasks.add_task(sync_asset_background, session_id, asset_id, True)
 
-        # Offer "Re-animate from this shot?" when a fresh hero is approved.
-        if asset.get("kind") in ("angle", "edit") and asset_id != session.get("reel_seed_asset_id"):
+        # First approved asset automatically becomes the reel seed and triggers generation
+        if session.get("reel_seed_asset_id") is None and asset.get("kind") in ("angle", "edit"):
+            session["reel_seed_asset_id"] = asset_id
+            background_tasks.add_task(process_reel_background, session_id)
+            background_tasks.add_task(mirror_session, session_id)
+        elif asset.get("kind") in ("angle", "edit") and asset_id != session.get("reel_seed_asset_id"):
+            # Offer "Re-animate from this shot?" when subsequent assets are approved
             reanimate_hint = True
 
     background_tasks.add_task(mirror_asset, asset_id)
@@ -309,6 +309,32 @@ async def get_session(session_id: str):
     return {"session": _public_session(sessions_db[session_id]), "assets": session_assets}
 
 
+@app.get("/api/store")
+async def get_global_store():
+    """All approved assets across all sessions for the global storefront."""
+    store_items = []
+    
+    # Group by session (which represents a product upload)
+    for session_id, session in sessions_db.items():
+        approved = [a for a in assets_db.values()
+                    if a["session_id"] == session_id and a["status"] == "approved"]
+        
+        if len(approved) > 0:
+            store_items.append({
+                "session_id": session_id,
+                "product_name": session.get("product_name", "Product"),
+                "product_folder": session.get("product_folder", "Product"),
+                "reel_url": session["reel_url"] if session.get("reel_status") == "ready" else None,
+                "reel_status": session.get("reel_status", "pending"),
+                "assets": approved,
+                "created_at": session.get("created_at", "")
+            })
+            
+    # Sort newest first
+    store_items.sort(key=lambda x: x["created_at"], reverse=True)
+    return {"items": store_items}
+
+
 @app.get("/api/store/{session_id}")
 async def get_store(session_id: str):
     """Approved assets + reel for the storefront (polled every 3s)."""
@@ -318,8 +344,8 @@ async def get_store(session_id: str):
     approved = [a for a in assets_db.values()
                 if a["session_id"] == session_id and a["status"] == "approved"]
     return {
-        "reel_url": session["reel_url"] if session["reel_status"] == "ready" else None,
-        "reel_status": session["reel_status"],
+        "reel_url": session.get("reel_url") if session.get("reel_status") == "ready" else None,
+        "reel_status": session.get("reel_status"),
         "assets": approved,
     }
 
