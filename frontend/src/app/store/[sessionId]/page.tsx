@@ -62,9 +62,9 @@ export default function StorePage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-8 py-12 grid grid-cols-1 lg:grid-cols-2 gap-16">
+      <main className="max-w-5xl mx-auto px-8 py-12 grid grid-cols-1 lg:grid-cols-12 gap-12">
         {/* Left Column: Media */}
-        <div className="space-y-4">
+        <div className="lg:col-span-5 space-y-4">
           {/* Hero Media (Reel or Main Image) */}
           <div className="w-full aspect-[4/5] bg-ink2 rounded-2xl overflow-hidden border border-line shadow-2xl relative">
             {reelUrl ? (
@@ -108,14 +108,14 @@ export default function StorePage() {
         </div>
 
         {/* Right Column: Product Details */}
-        <div className="flex flex-col pt-8">
+        <div className="lg:col-span-7 flex flex-col lg:pl-6 pt-4">
           <div className="mb-2 text-lilac font-bold tracking-widest text-xs uppercase">PhotoDukaan Studio</div>
-          <h1 className="font-display font-extrabold text-4xl leading-tight mb-4 capitalize">
+          <h1 className="font-display font-extrabold text-3xl leading-tight mb-4 capitalize">
             {productName || "Product"}
           </h1>
-          <div className="text-2xl text-marigold font-bold mb-8">₹{Math.floor(Math.random() * 5000) + 999}</div>
+          <div className="text-xl text-marigold font-bold mb-6">₹{Math.floor(Math.random() * 5000) + 999}</div>
           
-          <p className="text-lg text-lilac leading-relaxed mb-10">
+          <p className="text-base text-lilac leading-relaxed mb-8">
             Discover the beauty of this newly approved {productName?.toLowerCase() || "item"}. Shot and directed professionally using the PhotoDukaan Studio.
           </p>
 

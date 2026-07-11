@@ -54,7 +54,7 @@ export default function GlobalStorePage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-8 py-12">
+      <main className="max-w-6xl mx-auto px-8 py-12">
         {isLoading ? (
           <div className="flex justify-center items-center h-64 text-lilac animate-pulse">
             Loading storefront...
@@ -74,9 +74,9 @@ export default function GlobalStorePage() {
               <section key={item.session_id} className="grid grid-cols-1 lg:grid-cols-12 gap-12 border-b border-line pb-24 last:border-0">
                 
                 {/* Left: Product Info & Hero */}
-                <div className="lg:col-span-5 flex flex-col">
+                <div className="lg:col-span-4 flex flex-col">
                   <div className="mb-2 text-lilac font-bold tracking-widest text-xs uppercase">New Arrival</div>
-                  <h2 className="font-display font-extrabold text-4xl leading-tight mb-8 capitalize">
+                  <h2 className="font-display font-extrabold text-3xl leading-tight mb-6 capitalize">
                     {item.product_name}
                   </h2>
                   
@@ -110,8 +110,8 @@ export default function GlobalStorePage() {
                 </div>
 
                 {/* Right: Asset Grid */}
-                <div className="lg:col-span-7 pt-16">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
+                <div className="lg:col-span-8 pt-16">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
                     {item.assets.map((asset) => (
                       <div key={asset.id} className="aspect-[4/5] rounded-xl overflow-hidden border border-line bg-ink2 shadow-md relative group">
                         <img 
