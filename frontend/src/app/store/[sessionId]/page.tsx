@@ -7,19 +7,21 @@ import { api, Asset } from "@/lib/api";
 export default function StorePage() {
   const { sessionId } = useParams();
   const [reelUrl, setReelUrl] = useState<string | null>(null);
+  const [reelStatus, setReelStatus] = useState<string>("pending");
   const [assets, setAssets] = useState<Asset[]>([]);
-  
+
   // Use React hook polling pattern
   useEffect(() => {
     if (!sessionId) return;
-    
+
     let isMounted = true;
-    
+
     const fetchData = async () => {
       try {
         const data = await api.getStore(sessionId as string);
         if (isMounted) {
           setReelUrl(data.reel_url);
+          setReelStatus(data.reel_status);
           // Only show approved assets in the storefront
           setAssets(data.assets);
         }
@@ -66,11 +68,16 @@ export default function StorePage() {
                 className="w-full h-full object-cover animate-enter"
               />
             ) : assets.length > 0 ? (
-              <img 
-                src={assets[0].url} 
-                alt="Product Hero" 
-                className="w-full h-full object-cover animate-enter" 
+              <img
+                src={assets[0].url}
+                alt="Product Hero"
+                className="w-full h-full object-cover animate-enter"
               />
+            ) : reelStatus === "rendering" ? (
+              <div className="w-full h-full flex flex-col items-center justify-center text-lilac animate-shimmer">
+                <span className="text-4xl mb-4">🎬</span>
+                <p>Reel is rendering…</p>
+              </div>
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center text-lilac">
                 <span className="text-4xl mb-4">✨</span>

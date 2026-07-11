@@ -1,0 +1,40 @@
+# Render blueprint for the PhotoDukaan FastAPI backend.
+# Create -> Blueprint -> point at this repo. Set the secret env vars in the
+# Render dashboard (they are marked sync:false below so they are not committed).
+services:
+  - type: web
+    name: photodukaan-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 180
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: MOCK_MODE
+        value: "0"
+      - key: DEMO_FALLBACK
+        value: "0"
+      - key: LANGFUSE_ENABLED
+        value: "0"
+      - key: LANGFUSE_HOST
+        value: https://cloud.langfuse.com
+      - key: ALLOWED_ORIGINS
+        sync: false      # set to your Vercel URL, e.g. https://photodukaan.vercel.app
+      - key: PUBLIC_BASE_URL
+        sync: false      # set to this service's URL, e.g. https://photodukaan-api.onrender.com
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: DRIVE_PARENT_FOLDER_ID
+        sync: false
+      - key: GOOGLE_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: LANGFUSE_PUBLIC_KEY
+        sync: false
+      - key: LANGFUSE_SECRET_KEY
+        sync: false

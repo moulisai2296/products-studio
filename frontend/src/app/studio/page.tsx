@@ -1,22 +1,34 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { api, Asset, Session } from "@/lib/api";
+
+type ChatMsg = {
+  id: string;
+  ts: number;
+  role: "seller" | "studio";
+  text?: string;
+  pending?: boolean;
+  reanimateAssetId?: string;
+};
+
+const uid = () => Math.random().toString(36).slice(2);
 
 export default function StudioPage() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [instruction, setInstruction] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Poll session state
+  // Poll session state.
   useEffect(() => {
     if (!sessionId) return;
-    const interval = setInterval(async () => {
+    const tick = async () => {
       try {
         const data = await api.getSession(sessionId);
         setSession(data.session);
@@ -24,32 +36,32 @@ export default function StudioPage() {
       } catch (err) {
         console.error(err);
       }
-    }, 2000);
+    };
+    tick();
+    const interval = setInterval(tick, 2000);
     return () => clearInterval(interval);
   }, [sessionId]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
   useEffect(() => {
-    scrollToBottom();
-  }, [assets.length, session ? session.reel_status : null, isGenerating]);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [assets.length, messages.length, session?.reel_status, isGenerating]);
 
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
+  const pushMsg = (m: Omit<ChatMsg, "id" | "ts"> & Partial<Pick<ChatMsg, "id" | "ts">>) => {
+    const msg: ChatMsg = { id: m.id ?? uid(), ts: m.ts ?? Date.now(), ...m } as ChatMsg;
+    setMessages((prev) => [...prev, msg]);
+    return msg.id;
   };
+  const removeMsg = (id: string) => setMessages((prev) => prev.filter((m) => m.id !== id));
+
+  const handleUploadClick = () => fileInputRef.current?.click();
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     try {
       setIsUploading(true);
       const data = await api.createSession(file);
       setSessionId(data.session_id);
-      
-      // Start generating angles automatically
       setIsGenerating(true);
       await api.generateAngles(data.session_id);
       setIsGenerating(false);
@@ -57,35 +69,173 @@ export default function StudioPage() {
       console.error(err);
       setIsUploading(false);
       setIsGenerating(false);
+      pushMsg({ role: "studio", text: "Couldn't reach the studio — try uploading again?" });
     }
   };
 
-  const handleEdit = async (chipText: string) => {
-    if (!sessionId) return;
+  const runEdit = async (text: string) => {
+    if (!sessionId || !text.trim()) return;
+    pushMsg({ role: "seller", text });
+    const pendingId = pushMsg({ role: "studio", pending: true });
     try {
-      // we just take the first approved or first draft as base
       const baseAsset = assets.find((a) => a.status === "approved") || assets[0];
-      await api.editImage(sessionId, chipText, baseAsset?.id);
+      const res = await api.editImage(sessionId, text, baseAsset?.id);
+      removeMsg(pendingId);
+      if (!res.asset && res.message) {
+        pushMsg({ role: "studio", text: res.message });
+      }
+      // On success the new asset arrives via polling and slots in by time.
     } catch (err) {
       console.error(err);
+      removeMsg(pendingId);
+      pushMsg({ role: "studio", text: "Studio hiccup — try that again?" });
     }
   };
 
   const handleApprove = async (assetId: string) => {
+    // Optimistic: flip status locally right away.
+    setAssets((prev) => prev.map((a) => (a.id === assetId ? { ...a, status: "approved" } : a)));
     try {
-      await api.updateAssetStatus(assetId, "approved");
+      const res = await api.updateAssetStatus(assetId, "approved");
+      if (res.reanimate_hint) {
+        pushMsg({ role: "studio", text: "Love this shot! Make it the reel?", reanimateAssetId: assetId });
+      }
     } catch (err) {
       console.error(err);
     }
   };
 
   const handleReject = async (assetId: string) => {
+    setAssets((prev) => prev.map((a) => (a.id === assetId ? { ...a, status: "rejected" } : a)));
     try {
       await api.updateAssetStatus(assetId, "rejected");
     } catch (err) {
       console.error(err);
     }
   };
+
+  const handleReanimate = async (assetId: string, msgId: string) => {
+    removeMsg(msgId);
+    if (!sessionId) return;
+    try {
+      await api.animate(sessionId, assetId);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Merge chat messages + asset cards into one time-ordered timeline.
+  const timeline = useMemo(() => {
+    const items: { ts: number; render: React.ReactNode; key: string }[] = [];
+    for (const m of messages) {
+      items.push({ ts: m.ts, key: `m-${m.id}`, render: renderMessage(m) });
+    }
+    for (const a of assets) {
+      items.push({ ts: Date.parse(a.created_at) || 0, key: `a-${a.id}`, render: renderAsset(a) });
+    }
+    items.sort((x, y) => x.ts - y.ts);
+    return items;
+  }, [messages, assets]);
+
+  function renderMessage(m: ChatMsg) {
+    if (m.role === "seller") {
+      return (
+        <div className="flex justify-end animate-enter">
+          <div className="bg-ink2 rounded-2xl rounded-tr-sm p-3 max-w-[80%] border border-line text-sm text-ivory">
+            {m.text}
+          </div>
+        </div>
+      );
+    }
+    if (m.pending) {
+      return (
+        <div className="flex justify-start animate-enter">
+          <div className="bg-ink2 rounded-2xl p-3 border border-line w-[70%]">
+            <div className="text-[10px] text-lilac mb-2">Studio is editing…</div>
+            <div className="aspect-[4/5] bg-ink rounded-lg animate-shimmer" />
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="flex justify-start animate-enter">
+        <div className="bg-line rounded-2xl rounded-tl-sm p-3 max-w-[85%] text-sm text-ivory">
+          <p>{m.text}</p>
+          {m.reanimateAssetId && (
+            <button
+              onClick={() => handleReanimate(m.reanimateAssetId!, m.id)}
+              className="mt-2 bg-marigold text-ink text-xs font-bold px-3 py-1.5 rounded-full active:scale-95 transition"
+            >
+              🎬 Re-animate from this shot
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  function renderAsset(asset: Asset) {
+    const isLite = asset.model.includes("lite");
+    return (
+      <div className="flex justify-start animate-enter">
+        <div className="bg-ink2 rounded-2xl p-3 border border-line max-w-[90%] shadow-lg">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-xs font-bold text-ivory">{asset.label}</span>
+            <div className="flex gap-1">
+              <span
+                className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
+                  isLite ? "bg-marigold text-ink" : "bg-rani text-ivory"
+                }`}
+              >
+                {isLite ? "NB2 Lite" : "NB2"}
+              </span>
+              <span className="text-[9px] text-lilac bg-ink px-1.5 py-0.5 rounded border border-line">
+                {(asset.latency_ms / 1000).toFixed(1)}s
+              </span>
+            </div>
+          </div>
+          <img
+            src={asset.url}
+            alt={asset.label}
+            className="w-full rounded-lg aspect-[4/5] object-cover mb-3"
+          />
+          <div className="flex gap-2">
+            {asset.status === "approved" ? (
+              <div className="flex-1 text-center py-2 text-xs font-bold text-teal bg-ink rounded-lg border border-teal/30">
+                ✓ Approved
+              </div>
+            ) : asset.status === "rejected" ? (
+              <div className="flex-1 text-center py-2 text-xs font-bold text-rani bg-ink rounded-lg border border-rani/30">
+                ✕ Rejected
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={() => handleApprove(asset.id)}
+                  className="flex-1 bg-marigold text-ink text-xs font-bold py-2 rounded-lg active:scale-95 transition"
+                >
+                  Approve
+                </button>
+                <button
+                  onClick={() => handleReject(asset.id)}
+                  className="flex-1 bg-ink text-ivory text-xs font-bold py-2 rounded-lg border border-line active:scale-95 transition"
+                >
+                  Reject
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const chips: { emoji: string; label: string; text: string }[] = [
+    { emoji: "🪔", label: "Telugu offer", text: "Add 'దీపావళి ఆఫర్ 20%' text" },
+    { emoji: "🎁", label: "Hindi offer", text: "Add 'दिवाली ऑफर 20%' text" },
+    { emoji: "✨", label: "Model at wedding", text: "Show it on a model at a wedding" },
+    { emoji: "🌸", label: "Festive background", text: "Place it on a festive Diwali background with marigolds" },
+  ];
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center py-4">
@@ -96,6 +246,9 @@ export default function StudioPage() {
           <h1 className="font-display font-bold text-lg text-marigold tracking-wide uppercase">
             PhotoDukaan
           </h1>
+          {session?.product_name && (
+            <p className="text-[10px] text-lilac">{session.product_name} · studio session</p>
+          )}
         </header>
 
         {/* Chat Area */}
@@ -120,12 +273,12 @@ export default function StudioPage() {
                 >
                   {isUploading ? "Uploading..." : "Upload Photo"}
                 </button>
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  className="hidden" 
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
                   accept="image/*"
-                  onChange={handleFileChange} 
+                  onChange={handleFileChange}
                 />
               </div>
             </div>
@@ -133,114 +286,80 @@ export default function StudioPage() {
 
           {sessionId && (
             <>
-              {/* Initial Upload Message */}
+              {/* Initial upload bubble */}
               <div className="flex justify-end animate-enter">
                 <div className="bg-ink2 rounded-2xl rounded-tr-sm p-3 max-w-[80%] border border-line">
-                  <p className="text-sm mb-2 text-ivory">I want to sell this {session?.product_name?.toLowerCase() || 'product'}.</p>
+                  <p className="text-sm mb-2 text-ivory">
+                    I want to sell this {session?.product_name?.toLowerCase() || "product"}.
+                  </p>
                   {session?.product_image_url && (
-                    <img 
-                      src={session.product_image_url} 
-                      alt="Product" 
+                    <img
+                      src={session.product_image_url}
+                      alt="Product"
                       className="w-full rounded-lg object-cover aspect-square"
                     />
                   )}
                 </div>
               </div>
 
-              {/* Studio Reply */}
+              {/* Studio reply */}
               <div className="flex justify-start animate-enter">
                 <div className="bg-line rounded-2xl rounded-tl-sm p-3 max-w-[80%] text-sm text-ivory">
-                  Got it! Directing the photoshoot now. Generating 4 angles...
+                  Got it! Directing the photoshoot now. Generating 4 angles…
                 </div>
               </div>
 
-              {/* Generating Shimmer */}
-              {isGenerating && (
+              {/* Angle shimmer while first batch generates */}
+              {isGenerating && assets.length === 0 && (
                 <div className="grid grid-cols-2 gap-2 mt-2">
                   {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="aspect-[4/5] bg-ink2 rounded-xl border border-line animate-shimmer"></div>
+                    <div
+                      key={i}
+                      className="aspect-[4/5] bg-ink2 rounded-xl border border-line animate-shimmer"
+                    />
                   ))}
                 </div>
               )}
 
-              {/* Reel Card */}
+              {/* Reel card */}
               {session?.reel_status && session.reel_status !== "pending" && (
                 <div className="flex justify-start animate-enter">
                   <div className="bg-ink2 rounded-2xl p-3 border border-line w-full">
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-xs font-bold text-[#7A5CD6]">Omni Flash Reel</span>
                       <span className="text-[10px] text-lilac bg-ink px-2 py-1 rounded">
-                        {session.reel_status === "rendering" ? "⏳ Rendering..." : "✓ Ready"}
+                        {session.reel_status === "rendering"
+                          ? "⏳ Rendering…"
+                          : session.reel_status === "failed"
+                          ? "Retry soon"
+                          : "✓ Ready"}
                       </span>
                     </div>
-                    {session.reel_status === "rendering" ? (
-                      <div className="w-full aspect-[4/5] bg-ink rounded-lg animate-shimmer flex items-center justify-center">
-                        <span className="text-lilac text-xs">Generating video (~35s)</span>
-                      </div>
-                    ) : (
-                      <video 
-                        src={session.reel_url!} 
-                        autoPlay 
-                        loop 
-                        muted 
+                    {session.reel_status === "ready" && session.reel_url ? (
+                      <video
+                        src={session.reel_url}
+                        autoPlay
+                        loop
+                        muted
                         playsInline
                         className="w-full aspect-[4/5] rounded-lg object-cover bg-black"
                       />
+                    ) : (
+                      <div className="w-full aspect-[4/5] bg-ink rounded-lg animate-shimmer flex items-center justify-center">
+                        <span className="text-lilac text-xs">
+                          {session.reel_status === "failed"
+                            ? "Reel will retry"
+                            : "Omni Flash is rendering…"}
+                        </span>
+                      </div>
                     )}
                   </div>
                 </div>
               )}
 
-              {/* Assets Gallery */}
-              {assets.map((asset) => (
-                <div key={asset.id} className="flex justify-start animate-enter">
-                  <div className="bg-ink2 rounded-2xl p-3 border border-line max-w-[90%] shadow-lg">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-xs font-bold text-ivory">{asset.label}</span>
-                      <div className="flex gap-1">
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
-                          asset.model.includes('lite') ? 'bg-marigold text-ink' : 'bg-rani text-ivory'
-                        }`}>
-                          {asset.model.includes('lite') ? 'NB2 Lite' : 'NB2'}
-                        </span>
-                        <span className="text-[9px] text-lilac bg-ink px-1.5 py-0.5 rounded border border-line">
-                          {(asset.latency_ms / 1000).toFixed(1)}s
-                        </span>
-                      </div>
-                    </div>
-                    <img 
-                      src={asset.url} 
-                      alt={asset.label} 
-                      className="w-full rounded-lg aspect-[4/5] object-cover mb-3"
-                    />
-                    <div className="flex gap-2">
-                      {asset.status === "approved" ? (
-                        <div className="flex-1 text-center py-2 text-xs font-bold text-teal bg-ink rounded-lg border border-teal/30">
-                          ✓ Approved
-                        </div>
-                      ) : asset.status === "rejected" ? (
-                        <div className="flex-1 text-center py-2 text-xs font-bold text-rani bg-ink rounded-lg border border-rani/30">
-                          ✕ Rejected
-                        </div>
-                      ) : (
-                        <>
-                          <button 
-                            onClick={() => handleApprove(asset.id)}
-                            className="flex-1 bg-marigold text-ink text-xs font-bold py-2 rounded-lg active:scale-95 transition"
-                          >
-                            Approve
-                          </button>
-                          <button 
-                            onClick={() => handleReject(asset.id)}
-                            className="flex-1 bg-ink text-ivory text-xs font-bold py-2 rounded-lg border border-line active:scale-95 transition"
-                          >
-                            Reject
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
+              {/* Time-ordered timeline: seller bubbles, studio messages, asset cards */}
+              {timeline.map((item) => (
+                <div key={item.key}>{item.render}</div>
               ))}
             </>
           )}
@@ -249,40 +368,38 @@ export default function StudioPage() {
 
         {/* Input Row */}
         <div className="bg-ink2 p-2 pb-5 border-t border-line flex-shrink-0">
-          {/* Quick Chips */}
+          {/* Quick chips */}
           <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x">
-             <button 
-                onClick={() => handleEdit("Show it on a model at a wedding")}
-                className="snap-start shrink-0 bg-ink border border-line text-[10px] text-ivory px-3 py-1 rounded-full hover:border-marigold transition whitespace-nowrap"
-             >
-                ✨ Model at wedding
-             </button>
-             <button 
-                onClick={() => handleEdit("Add 'दिवाली ऑफर 20%' text")}
-                className="snap-start shrink-0 bg-ink border border-line text-[10px] text-ivory px-3 py-1 rounded-full hover:border-marigold transition whitespace-nowrap"
-             >
-                🪔 Diwali Offer text
-             </button>
+            {chips.map((c) => (
+              <button
+                key={c.label}
+                onClick={() => runEdit(c.text)}
+                disabled={!sessionId}
+                className="snap-start shrink-0 bg-ink border border-line text-[10px] text-ivory px-3 py-1 rounded-full hover:border-marigold transition whitespace-nowrap disabled:opacity-40"
+              >
+                {c.emoji} {c.label}
+              </button>
+            ))}
           </div>
-          
+
           <div className="flex gap-2">
-            <input 
-              type="text" 
+            <input
+              type="text"
               value={instruction}
               onChange={(e) => setInstruction(e.target.value)}
-              placeholder="Tell the studio what you want..."
+              placeholder="Tell the studio what you want…"
               className="flex-1 bg-ink border border-line rounded-full px-4 py-1 text-sm text-ivory focus:outline-none focus:border-marigold placeholder-lilac"
               onKeyDown={(e) => {
-                if (e.key === "Enter" && instruction) {
-                  handleEdit(instruction);
+                if (e.key === "Enter" && instruction.trim()) {
+                  runEdit(instruction);
                   setInstruction("");
                 }
               }}
             />
-            <button 
+            <button
               onClick={() => {
-                if (instruction) {
-                  handleEdit(instruction);
+                if (instruction.trim()) {
+                  runEdit(instruction);
                   setInstruction("");
                 }
               }}
@@ -293,8 +410,8 @@ export default function StudioPage() {
           </div>
         </div>
 
-        {/* Home Indicator */}
-        <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 w-1/3 h-1 bg-line rounded-full"></div>
+        {/* Home indicator */}
+        <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 w-1/3 h-1 bg-line rounded-full" />
       </div>
     </div>
   );
