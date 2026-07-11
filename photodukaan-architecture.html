@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PhotoDukaan — System Architecture & India Impact</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Sora:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#201A3A; --ink2:#2B2450; --line:#3a3168; --marigold:#F5A83C;
+    --rani:#D64570; --ivory:#F8F4EA; --lilac:#A79FC7; --teal:#4FC3B0;
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--ink);color:var(--ivory);font-family:'Sora',sans-serif;
+    line-height:1.6;font-size:15px}
+  .page{max-width:1080px;margin:0 auto;padding:48px 28px 80px}
+  h1{font-family:'Bricolage Grotesque';font-weight:800;font-size:clamp(30px,5vw,46px);
+    letter-spacing:-1px;line-height:1.05}
+  h1 span{color:var(--marigold)}
+  .tagline{color:var(--lilac);margin:10px 0 6px;max-width:640px}
+  h2{font-family:'Bricolage Grotesque';font-weight:700;font-size:15px;color:var(--marigold);
+    text-transform:uppercase;letter-spacing:2.5px;margin:64px 0 20px;
+    border-bottom:1px solid var(--line);padding-bottom:10px}
+  h3{font-family:'Bricolage Grotesque';font-weight:600;font-size:18px;margin:26px 0 8px}
+  p{margin:10px 0;color:#DDD6EE}
+  .muted{color:var(--lilac);font-size:13px}
+  sup a{color:var(--marigold);text-decoration:none;font-weight:700}
+
+  /* model chips */
+  .chip{display:inline-block;font-size:11.5px;font-weight:700;border-radius:20px;
+    padding:3px 11px;margin:2px 4px 2px 0;letter-spacing:.3px;white-space:nowrap}
+  .m-dir{background:var(--teal);color:var(--ink)}
+  .m-lite{background:var(--marigold);color:var(--ink)}
+  .m-nb2{background:var(--rani);color:var(--ivory)}
+  .m-omni{background:#7A5CD6;color:var(--ivory)}
+  .m-infra{background:var(--ink2);color:var(--lilac);border:1px solid var(--line)}
+
+  /* user flow rail */
+  .flow{position:relative;margin:26px 0 10px;padding-left:34px}
+  .flow::before{content:'';position:absolute;left:11px;top:8px;bottom:8px;
+    width:2px;background:linear-gradient(var(--marigold),var(--rani),#7A5CD6)}
+  .stage{position:relative;background:var(--ink2);border:1px solid var(--line);
+    border-radius:14px;padding:18px 20px;margin-bottom:18px}
+  .stage::before{content:attr(data-n);position:absolute;left:-34px;top:16px;width:24px;
+    height:24px;border-radius:50%;background:var(--marigold);color:var(--ink);
+    font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;
+    font-family:'Bricolage Grotesque'}
+  .stage h3{margin:0 0 4px;font-size:16px}
+  .stage .who{color:var(--marigold);font-size:12px;font-weight:600;
+    text-transform:uppercase;letter-spacing:1.5px}
+  .stage .lat{float:right;font-size:11.5px;background:var(--ink);border:1px solid var(--line);
+    color:var(--lilac);border-radius:6px;padding:2px 8px;margin-left:10px}
+
+  /* architecture diagram */
+  .arch{display:grid;grid-template-columns:1fr;gap:0;margin-top:24px}
+  .tier{border:1px dashed var(--line);border-radius:14px;padding:16px 18px;position:relative}
+  .tier + .tier{margin-top:34px}
+  .tier + .tier::before{content:'▼';position:absolute;top:-27px;left:50%;
+    transform:translateX(-50%);color:var(--marigold);font-size:14px}
+  .tier .tlabel{position:absolute;top:-11px;left:16px;background:var(--ink);padding:0 8px;
+    font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--lilac)}
+  .boxes{display:flex;flex-wrap:wrap;gap:12px;margin-top:6px}
+  .box{flex:1 1 200px;background:var(--ink2);border:1px solid var(--line);border-radius:10px;
+    padding:12px 14px;min-width:180px}
+  .box b{display:block;font-size:14px;margin-bottom:3px}
+  .box small{color:var(--lilac);font-size:12px;line-height:1.45;display:block}
+  .box.hot{border-color:var(--marigold)}
+
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px}
+  th{font-family:'Bricolage Grotesque';text-align:left;color:var(--marigold);font-size:12px;
+    text-transform:uppercase;letter-spacing:1.5px;padding:8px 10px;border-bottom:1px solid var(--line)}
+  td{padding:10px;border-bottom:1px solid #2e2757;vertical-align:top;color:#DDD6EE}
+  td code, p code, li code{background:var(--ink2);border:1px solid var(--line);border-radius:5px;
+    padding:1px 6px;font-size:12.5px;color:var(--marigold)}
+
+  /* impact cards */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin:20px 0}
+  .stat{background:var(--ink2);border:1px solid var(--line);border-radius:14px;padding:18px}
+  .stat .n{font-family:'Bricolage Grotesque';font-weight:800;font-size:30px;color:var(--marigold);
+    line-height:1.1}
+  .stat .n.pink{color:var(--rani)} .stat .n.teal{color:var(--teal)}
+  .stat p{font-size:13px;color:var(--lilac);margin:6px 0 0}
+
+  .callout{border-left:3px solid var(--rani);background:var(--ink2);border-radius:0 12px 12px 0;
+    padding:14px 18px;margin:20px 0}
+  ol.src{padding-left:22px;font-size:13px;color:var(--lilac)}
+  ol.src li{margin-bottom:9px;line-height:1.5}
+  ol.src a{color:var(--teal);word-break:break-all;text-decoration:none}
+  ol.src a:hover{text-decoration:underline}
+  .legend{margin:14px 0 0;font-size:13px;color:var(--lilac)}
+  @media(max-width:640px){.stage .lat{float:none;display:inline-block;margin:6px 0 0}}
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>Photo<span>Dukaan</span> — System Architecture</h1>
+<p class="tagline">An AI photoshoot studio for Bharat's sellers. One phone photo in — a catalog, model shots, vernacular festive creatives, and a 10-second reel out. Directed by conversation, in the seller's own language.</p>
+<p class="legend">
+  <span class="chip m-dir">Gemini 3.5 Flash · Director</span>
+  <span class="chip m-lite">NB2 Lite · gemini-3.1-flash-lite-image</span>
+  <span class="chip m-nb2">NB2 · gemini-3.1-flash-image</span>
+  <span class="chip m-omni">Omni Flash · gemini-omni-flash-preview</span>
+  <span class="chip m-infra">Infra / no model</span>
+</p>
+
+<!-- ================= USER FLOW ================= -->
+<h2>User Flow — where each model comes in</h2>
+<p>The persona is <b>Lakshmi</b>, a saree weaver in Dharmavaram who sells on WhatsApp and Meesho. She speaks Telugu, has one phone photo of her saree, and no design skills. Design principle: <b>the chat is never blocked</b> — slow work (reel, Drive sync) runs in the background while she reviews.</p>
+
+<div class="flow">
+  <div class="stage" data-n="1">
+    <span class="lat">&lt;1s</span>
+    <div class="who">Seller action</div>
+    <h3>Upload one product photo</h3>
+    <span class="chip m-infra">FastAPI · /api/session</span>
+    <p>The photo is base64-encoded and held in an in-memory session (<code>product_b64</code>, <code>history</code>, <code>shots</code>, <code>chain_id</code>, <code>approved</code>). No model is called yet. No accounts, no onboarding — upload is the entire setup.</p>
+  </div>
+
+  <div class="stage" data-n="2">
+    <span class="lat">~4s per shot · reel &amp; Drive in background</span>
+    <div class="who">Automatic</div>
+    <h3>Contact sheet streams into the chat + background pipeline fires</h3>
+    <span class="chip m-lite">NB2 Lite</span>
+    <span class="chip m-omni">Omni Flash (background)</span>
+    <span class="chip m-infra">Drive Drafts/ (background)</span>
+    <p><b>Foreground:</b> four single-turn NB2 Lite calls (front, three-quarter, detail, flat lay) with the product photo as reference, <code>aspect_ratio: 4:5</code>, <code>image_size: 1K</code> — each frame streams into the chat as it lands, wearing a live latency badge (~4s, ~₹3/image). The speed <i>is</i> the demo.</p>
+    <p><b>Background (FastAPI BackgroundTasks):</b> (a) Omni Flash starts animating the hero front angle immediately, so its 30–60s render is hidden behind the review step; (b) all drafts push to Google Drive under <code>&lt;product&gt;/Drafts/</code> via a service account with a pre-shared folder — no user OAuth on hackathon day. Neither task ever blocks the chat.</p>
+  </div>
+
+  <div class="stage" data-n="3">
+    <span class="lat">3.5F &lt;1s + NB2 ~5–10s</span>
+    <div class="who">Seller speaks / types — any language</div>
+    <h3>In-chat approvals + multi-turn edits ("పెళ్లి వేదిక దగ్గర మోడల్ మీద చూపించు")</h3>
+    <span class="chip m-dir">Gemini 3.5 Flash</span>
+    <span class="chip m-nb2">NB2 multi-turn chain</span>
+    <span class="chip m-infra">/api/edit</span>
+    <p><b>Step A — Director:</b> 3.5 Flash converts the seller's plain Telugu/Hinglish instruction into an optimized English image-editing prompt, with two hard rules: never alter the product's colors/patterns/textures, and if on-image text is requested, state the exact text first, then instruct accurate script rendering (the docs-recommended text technique<sup><a href="#s12">[12]</a></sup>).</p>
+    <p><b>Step B — Render:</b> the first edit on a chosen image sends that image + prompt to NB2; every follow-up sends only text plus <code>previous_interaction_id</code>, so Google carries the visual state across turns — the docs-recommended multi-turn editing pattern<sup><a href="#s12">[12]</a></sup>. Picking a different base image resets the chain. NB2 (not Lite) runs edits because Lite is documented as "not optimized for multi-turn sequential editing," while NB2 carries "reliable text rendering"<sup><a href="#s12">[12]</a></sup>. Each result renders inline in the chat with Approve / Edit-again controls.</p>
+  </div>
+
+  <div class="stage" data-n="4">
+    <span class="lat">instant + background sync</span>
+    <div class="who">Seller action</div>
+    <h3>Approve → assets promoted</h3>
+    <span class="chip m-infra">/api/approve · Drive Approved/</span>
+    <p>On approve, the asset is (a) marked in the session's <code>approved</code> set, (b) copied to Drive <code>&lt;product&gt;/Approved/</code> in the background, and (c) exposed to the storefront API. If the approved hero differs from the image the background reel was seeded with, the chat offers one tap: <i>"Re-animate from this shot?"</i> — no silent stale reels. Drive is framed as the seller's asset library: Lakshmi owns her whole campaign in her own Drive.</p>
+  </div>
+
+  <div class="stage" data-n="5">
+    <span class="lat">live refresh</span>
+    <div class="who">The demo climax</div>
+    <h3>Mock storefront — the product page updates live</h3>
+    <span class="chip m-infra">Storefront page · /api/store/{session}</span>
+    <p>A polished single product page (same backend, separate route) polls the approved-assets endpoint: approved images fill the gallery, the Omni Flash reel autoplays as the hero, vernacular festive creative sits in the promo slot. On stage: cut from the chat to the storefront — <b>"and this is Lakshmi's store, five minutes after one photo."</b> No cart, no checkout — one page, done well.</p>
+  </div>
+</div>
+
+<div class="callout">
+  <b>Solo-builder cut order if time slips:</b> Drive sync goes first (show a pre-populated folder and say "assets sync to the seller's Drive"), reel re-animation offer second. The storefront is never cut — it is the demo climax. The chat + angles + edits pipeline is the non-negotiable core.
+</div>
+
+<!-- ================= ARCHITECTURE ================= -->
+<h2>System Architecture</h2>
+
+<div class="arch">
+  <div class="tier">
+    <span class="tlabel">Client — two surfaces, one single-page app</span>
+    <div class="boxes">
+      <div class="box"><b>Studio chat (seller surface)</b><small>Chat thread with quick-chips (Telugu / Hindi festive text, model-at-wedding, backgrounds). Generated images render inline with Approve / Edit controls and latency + model badges ("3.8s · NB2 Lite").</small></div>
+      <div class="box"><b>Reel card</b><small>Shows a rendering state while Omni Flash works in the background; autoplays on completion; offers re-animate when the approved hero changes.</small></div>
+      <div class="box hot"><b>Storefront (buyer surface)</b><small>Mock product page at /store/{session}: gallery of approved images, reel as hero, vernacular promo creative. Polls the backend; updates live during the demo.</small></div>
+    </div>
+  </div>
+
+  <div class="tier">
+    <span class="tlabel">Backend — Python FastAPI (single service + BackgroundTasks)</span>
+    <div class="boxes">
+      <div class="box"><b>/api/session</b><small>Upload → session id. In-memory store: product image, chat history, shots map, NB2 chain id, approved set.</small></div>
+      <div class="box hot"><b>/api/generate-angles</b><small>4 × single-turn NB2 Lite calls; on return, enqueues background reel (hero angle) + Drive Drafts/ push.</small></div>
+      <div class="box hot"><b>/api/edit</b><small>3.5 Flash prompt-rewrite → NB2 chained edit via <code>previous_interaction_id</code>.</small></div>
+      <div class="box hot"><b>/api/approve</b><small>Marks asset approved; background copy to Drive Approved/; storefront picks it up on next poll.</small></div>
+      <div class="box"><b>/api/animate</b><small>Omni Flash image-to-video; MP4 saved to /renders, referenced by storefront and chat.</small></div>
+      <div class="box"><b>/api/store/{session}</b><small>Read-only JSON of approved assets + reel URL for the storefront page.</small></div>
+    </div>
+  </div>
+
+  <div class="tier">
+    <span class="tlabel">Google ecosystem — Interactions API (v1beta/interactions) + Drive API</span>
+    <div class="boxes">
+      <div class="box"><b><span class="chip m-dir">3.5 Flash</span></b><small>The orchestrating brain: intent understanding in any Indian language, prompt optimization, product-preservation rules. GA, stable; default temperature per Gemini 3.x guidance<sup><a href="#s11">[11]</a></sup>.</small></div>
+      <div class="box"><b><span class="chip m-lite">NB2 Lite</span></b><small>High-throughput catalog angles: ~4s, 1K, ~$0.034/image. "Fastest and cheapest," built "for velocity and scale"<sup><a href="#s12">[12]</a></sup>.</small></div>
+      <div class="box"><b><span class="chip m-nb2">NB2</span></b><small>Conversational edits, model shots, vernacular on-image text. Docs-recommended multi-turn chaining; "reliable text rendering"<sup><a href="#s12">[12]</a></sup>.</small></div>
+      <div class="box"><b><span class="chip m-omni">Omni Flash</span></b><small>10-second image-to-video with physics-aware motion, run as a background task<sup><a href="#s13">[13]</a></sup>.</small></div>
+      <div class="box"><b><span class="chip m-infra">Google Drive</span></b><small>Service account, pre-shared folder. &lt;product&gt;/Drafts/ and /Approved/ — the seller's owned asset library, and a fourth Google-ecosystem integration for the Grand Prize story.</small></div>
+    </div>
+  </div>
+</div>
+
+<h3>Model responsibility matrix</h3>
+<table>
+  <tr><th>Job</th><th>Model / service</th><th>Why this one</th></tr>
+  <tr><td>Understand seller intent (Telugu/Hindi/Hinglish) &amp; write generation prompts</td><td><span class="chip m-dir">3.5 Flash</span></td><td>GA text model; strong multilingual reasoning; keeps image models honest with product-preservation rules</td></tr>
+  <tr><td>4 catalog angles per product, at scale</td><td><span class="chip m-lite">NB2 Lite</span></td><td>Single-shot generation is its documented sweet spot; ~4s + ~₹3/image makes the "photoshoot in seconds" claim literal — the Track 4 story</td></tr>
+  <tr><td>Iterative edits, model-wearing-product, on-image Indic text</td><td><span class="chip m-nb2">NB2</span></td><td>Lite is explicitly "not optimized for multi-turn sequential editing"; NB2 is the docs' multi-turn model with reliable text rendering — and the docs' own "advanced composition" example is precisely dress + model → e-commerce fashion photo<sup><a href="#s12">[12]</a></sup></td></tr>
+  <tr><td>10-second product reel (background)</td><td><span class="chip m-omni">Omni Flash</span></td><td>Purpose-built image-to-video with conversational refinement; Google's recommended pairing with NB2 Lite<sup><a href="#s14">[14]</a></sup> — the Track 5 story. Its 30–60s latency is hidden behind the review step</td></tr>
+  <tr><td>Seller-owned asset library</td><td><span class="chip m-infra">Drive API</span></td><td>Drafts/ and Approved/ folders per product; background sync, never blocking chat; deepens the Google-ecosystem integration judged in the Grand Prize</td></tr>
+</table>
+
+<div class="callout">
+  <b>Known risk &amp; mitigation:</b> Telugu is not on the image models' best-performance language list (Hindi <code>hi-IN</code> is)<sup><a href="#s12">[12]</a></sup>. Plan: test Telugu on-image text first with the real key; the Hindi "दिवाली ऑफर 20%" chip is the drop-in demo fallback. Every generated image carries a SynthID watermark — a responsible-AI talking point, not a bug.
+</div>
+
+<!-- ================= INDIA IMPACT ================= -->
+<h2>India Impact — the research</h2>
+
+<h3>1 · The problem is priced out of reach</h3>
+<p>Professional product photography in India costs roughly <b>₹300–₹800 per basic image</b>, climbing to <b>₹1,500–₹8,000 per image</b> for premium retouched work<sup><a href="#s1">[1]</a><a href="#s2">[2]</a></sup>. Per-product e-commerce rates run <b>₹500–₹2,500</b> even in bulk (100+ products)<sup><a href="#s3">[3]</a></sup>. A 50-product catalog at 4 angles each lands around <b>₹60,000</b>, and adding on-model shots can push totals past <b>₹1.5 lakh</b><sup><a href="#s4">[4]</a></sup>. For a seller whose typical listing sells at ₹300–₹600, that math simply never closes — so most list a single dim phone photo and lose the click to branded competitors.</p>
+<p>PhotoDukaan's economics: <b>~₹3 per generated image</b> (NB2 Lite at $0.034 per 1K image<sup><a href="#s5">[5]</a></sup>) and <b>~₹85 per 10-second reel</b> (Omni Flash at ~$0.10/second<sup><a href="#s13">[13]</a></sup>) — a full campaign for under ₹100, roughly a <b>99.8% cost reduction</b> versus a conventional shoot.</p>
+
+<h3>2 · The people it serves are the fastest-growing sellers in India</h3>
+<div class="stats">
+  <div class="stat"><div class="n">~60M</div><p>MSMEs form India's retail backbone, contributing ~30% of GDP (~$1T annually); they are projected to drive nearly half of incremental e-commerce growth<sup><a href="#s6">[6]</a></sup></p></div>
+  <div class="stat"><div class="n pink">1M+</div><p>registered sellers on Meesho alone — 80% selling online for the first time, ~50% from Tier-2+ towns<sup><a href="#s7">[7]</a></sup></p></div>
+  <div class="stat"><div class="n teal">10M+</div><p>women among Meesho's ~16M entrepreneur base — reselling from home over WhatsApp, exactly PhotoDukaan's user<sup><a href="#s8">[8]</a></sup></p></div>
+  <div class="stat"><div class="n">60%+</div><p>of India's e-commerce shipments now come from Tier-2/3 cities<sup><a href="#s6">[6]</a></sup>; womenswear is Meesho's highest-selling category<sup><a href="#s7">[7]</a></sup> — visual-first products where presentation decides the sale</p></div>
+</div>
+
+<h3>3 · Vernacular is not a feature — it's the market</h3>
+<p><b>57% of Indian internet users prefer Indian languages</b> over English<sup><a href="#s9">[9]</a></sup>, and roughly <b>9 out of 10 new internet users</b> come online in an Indian language<sup><a href="#s10">[10]</a></sup>. Yet design tools, prompt boxes, and ad platforms remain English-first. PhotoDukaan inverts that: the seller directs the shoot in Telugu or Hindi, and the output creatives carry accurate native-script text — the single hardest thing for most image models, and NB2's documented strength<sup><a href="#s12">[12]</a></sup>.</p>
+
+<h3>4 · The market this unlocks</h3>
+<p>India's social commerce market is estimated at <b>$29.27B in 2025, forecast to reach $143.86B by 2030 (37.5% CAGR)</b><sup><a href="#s15">[15]</a></sup>, driven precisely by Tier-2/3 sellers, UPI micro-orders, and vernacular content. McKinsey sizes modular digital-commerce tooling for MSMEs — the category PhotoDukaan sits in — at <b>$25–30B by 2030</b><sup><a href="#s6">[6]</a></sup>. And the conversion mechanism is proven: <b>77% of shoppers say images influence purchase decisions</b><sup><a href="#s4">[4]</a></sup>, while <b>22% of e-commerce returns</b> happen because products look different from their photos<sup><a href="#s16">[16]</a></sup> — better imagery both sells more and returns less.</p>
+
+<div class="callout">
+  <b>The one-line impact claim for judges:</b> India has ~60M MSMEs and a million-plus first-time online sellers, most in small towns, most preferring Indian languages — and the single biggest conversion lever, professional product imagery, costs 100–500× what they can pay. PhotoDukaan collapses a ₹60,000 photoshoot into a ₹100, five-minute, Telugu-language conversation.
+</div>
+
+<!-- ================= SOURCES ================= -->
+<h2>Sources</h2>
+<ol class="src">
+  <li id="s1">Ravikant Photography — "How Much Do Product Photographers Charge in India" (basic product photography ₹300–₹800/photo; standard e-commerce batch ₹5,000–₹20,000). <a href="https://www.ravikantphotography.com/how-much-do-product-photographers-charge-in-india/">ravikantphotography.com</a></li>
+  <li id="s2">Parwez K Photography — "A Complete Guide on Product Photography Rates in India" (per-image ₹1,500–₹8,000; packages ₹5,000–₹25,000+). <a href="https://www.parwezkphotography.com/blog/product-photography-rates-in-india">parwezkphotography.com</a></li>
+  <li id="s3">Blusteak Media — "Amazon Product Photography Rates" (₹500–₹2,500 per product at 100+ product volume). <a href="https://blusteak.com/blog/amazon-product-photography-rates-negotiation-tips">blusteak.com</a></li>
+  <li id="s4">PicToPose — "Product Photography Cost: Studio vs AI vs DIY (2026)" (50-product/200-image catalog ≈ ₹60,000; on-model totals above ₹1.5 lakh; Salsify 2025: 77% of shoppers say images influence purchases). <a href="https://pictopose.com/blog/product-photography-cost-comparison/">pictopose.com</a></li>
+  <li id="s5">Pexo — "What Is Nano Banana 2 Lite?" (API id gemini-3.1-flash-lite-image; ~4s per 1K image; $0.034 standard / $0.0168 batch per image). <a href="https://pexo.ai/blog/what-is-nano-banana-2-lite-2528">pexo.ai</a></li>
+  <li id="s6">The Statesman, reporting McKinsey (Feb 2026) — "India's D2C e-comm to grow 3x faster" (~60M MSMEs ≈ 30% of GDP; MSMEs to drive ~half of incremental e-commerce growth; Tier-2/3 = 60%+ of shipments; $25–30B MSME commerce-tooling market by 2030). <a href="https://www.thestatesman.com/business/indias-d2c-e-comm-to-grow-3x-faster-hit-usd-60-billion-by-2030-report-1503562604.html">thestatesman.com</a></li>
+  <li id="s7">Business Today — "Meesho crosses 1 million registered sellers" (80% new-to-e-commerce; ~50% Tier-2+; womenswear highest-selling category; 140M transacting users, 910M orders in 2022). <a href="https://www.businesstoday.in/entrepreneurship/story/e-commerce-unicorn-meesho-crosses-1-million-registered-sellers-375433-2023-03-30">businesstoday.in</a></li>
+  <li id="s8">Y Combinator — Meesho company profile (~16M entrepreneurs, 10M+ women; vision to enable 100M small businesses online). <a href="https://www.ycombinator.com/companies/meesho">ycombinator.com</a></li>
+  <li id="s9">Business Standard, reporting IAMAI–Kantar "Internet in India" (57% of users prefer Indian languages; online shopping among top vernacular activities). <a href="https://www.business-standard.com/india-news/use-of-indian-languages-key-for-increasing-internet-access-in-india-report-124031000395_1.html">business-standard.com</a></li>
+  <li id="s10">YourStory / Google India (9 of 10 new internet users consume content in Indian languages; Indian-language users growing ~18% CAGR vs 3% for English). <a href="https://yourstory.com/2019/12/india-internet-2019-report-reliance-jio">yourstory.com</a></li>
+  <li id="s11">Google AI for Developers — "What's new in Gemini 3.5 Flash" (GA/stable; keep default temperature; Interactions API supported). <a href="https://ai.google.dev/gemini-api/docs/whats-new-gemini-3.5">ai.google.dev</a></li>
+  <li id="s12">Google AI for Developers — "Nano Banana image generation" (model ids & positioning; Lite "not optimized for multi-turn sequential editing"; NB2 "reliable text rendering"; multi-turn via previous_interaction_id as the recommended iteration pattern; text-first technique for on-image text; best-performance language list incl. hi-IN; dress+model e-commerce composition example; SynthID). <a href="https://ai.google.dev/gemini-api/docs/image-generation">ai.google.dev</a></li>
+  <li id="s13">Google AI for Developers / Pexo — "Generate and edit videos with Gemini Omni Flash" (gemini-omni-flash-preview; up to 10s; image-to-video via Interactions API; &lt;4MB inline vs URI delivery; ~$0.10/second). <a href="https://ai.google.dev/gemini-api/docs/omni">ai.google.dev</a> · <a href="https://pexo.ai/blog/what-is-gemini-omni-flash-7269">pexo.ai</a></li>
+  <li id="s14">Google Blog — "Start building with Nano Banana 2 Lite and Gemini Omni Flash" (recommended chain: NB2 Lite image → Omni Flash animation; Interactions API session history for stacked edits). <a href="https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-omni-flash-nano-banana-2-lite/">blog.google</a></li>
+  <li id="s15">Mordor Intelligence — "India Social Commerce Market" ($29.27B in 2025 → $143.86B by 2030, 37.5% CAGR; Tier-2/3 + vernacular content as growth drivers). <a href="https://www.mordorintelligence.com/industry-reports/india-social-commerce-market">mordorintelligence.com</a></li>
+  <li id="s16">Nightjar — "The Real Cost of Product Photography in 2026" (22% of e-commerce returns due to products looking different from images; apparel return rates 20–30%). <a href="https://nightjar.so/blog/the-real-cost-of-product-photography-a-breakdown">nightjar.so</a></li>
+</ol>
+
+<p class="muted" style="margin-top:36px">PhotoDukaan · Architecture reference for CLAUDE.md · July 2026 · All model names, API patterns, and pricing verified against ai.google.dev documentation current as of July 11, 2026.</p>
+
+</div>
+</body>
+</html>
