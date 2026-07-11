@@ -20,7 +20,7 @@ export default function Home() {
           reel out — directed by conversation, published live to a storefront.
         </p>
 
-        <div className="grid sm:grid-cols-3 gap-4 mb-10">
+        <div className="grid sm:grid-cols-2 gap-4 mb-10">
           <Link
             href="/studio"
             className="group bg-marigold text-ink rounded-2xl p-6 flex flex-col items-start text-left active:scale-95 transition shadow-lg"
@@ -28,18 +28,7 @@ export default function Home() {
             <span className="text-2xl mb-3">💬</span>
             <span className="font-display font-bold text-lg">Studio</span>
             <span className="text-xs font-semibold opacity-80">
-              Seller chat — start a photoshoot
-            </span>
-          </Link>
-
-          <Link
-            href="/admin"
-            className="group bg-ink2 border border-line rounded-2xl p-6 flex flex-col items-start text-left hover:border-marigold active:scale-95 transition"
-          >
-            <span className="text-2xl mb-3">🗂️</span>
-            <span className="font-display font-bold text-lg text-ivory">Admin</span>
-            <span className="text-xs text-lilac">
-              Review board — drafts, cost, Drive
+              Seller chat — upload, generate & approve
             </span>
           </Link>
 
@@ -47,7 +36,7 @@ export default function Home() {
             <span className="text-2xl mb-3">🛍️</span>
             <span className="font-display font-bold text-lg text-ivory">Storefront</span>
             <span className="text-xs text-lilac">
-              Opens per session at <code className="text-marigold">/store/&lt;id&gt;</code>
+              Opens per session at <code className="text-marigold">/store/&lt;id&gt;</code> — approved shots only
             </span>
           </div>
         </div>
